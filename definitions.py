@@ -2,6 +2,7 @@
 import os
 import boto3
 import json
+import time
 import requests
 from dagster import ConfigurableResource, Definitions, asset, AssetExecutionContext
 
@@ -49,9 +50,34 @@ def standings(context: AssetExecutionContext, minio: MinIOResource):
     # Return list of team abbreviations for downstream assets
     return [s["teamAbbrev"]["default"] for s in data["standings"]]
 
+@asset(deps=[standings])
+def schedules(context: AssetExecutionContext, minio: MinIOResource):
+    """Fetch full season schedule for every NHL team and store in data lake"""
+    standings_data = json.loads(
+        minio.client()
+            .get_object(Bucket=minio.bucket, Key="standings/standings.json")["Body"]
+            .read()
+    )
+    team_abbrevs = [s["teamAbbrev"]["default"] for s in standings_data["standings"]]
+
+    uploaded = 0
+    for abbrev in team_abbrevs:
+        url = f"https://api-web.nhle.com/v1/club-schedule-season/{abbrev}/now"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        key = f"schedules/{abbrev}/schedule.json"
+        minio.upload(key, json.dumps(response.json()).encode())
+        uploaded += 1
+        context.log.info(f"Uploaded schedule for {abbrev}")
+        time.sleep(0.5)  # 500ms between requests
+
+    context.log.info(f"Uploaded schedules for {uploaded} teams")
+    return team_abbrevs
+
 
 defs = Definitions(
-    assets=[standings],
+    assets=[standings, schedules],
     resources={
         "minio": MinIOResource(
             endpoint=os.getenv("MINIO_ENDPOINT", "http://localhost:9000"),
