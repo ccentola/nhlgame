@@ -6,6 +6,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "boto3>=1.42.49",
+    "dagster>=1.12.14",
+    "dagster-postgres>=0.28.14",
+    "dagster-webserver>=1.12.14",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
 ]
+
+[tool.dagster]
+module_name = "definitions"
