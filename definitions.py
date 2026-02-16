@@ -75,9 +75,48 @@ def schedules(context: AssetExecutionContext, minio: MinIOResource):
     context.log.info(f"Uploaded schedules for {uploaded} teams")
     return team_abbrevs
 
+@asset(deps=[schedules])
+def play_by_play(context: AssetExecutionContext, minio: MinIOResource):
+    """Fetch play-by-play for all completed games across all teams."""
+    # Collect unique completed game IDs from all schedule files
+    game_ids = set()
+
+    s3 = minio.client()
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=minio.bucket, Prefix="schedules/"):
+        for obj in page.get("Contents", []):
+            if not obj["Key"].endswith("schedule.json"):
+                continue
+            data = json.loads(
+                s3.get_object(Bucket=minio.bucket, Key=obj["Key"])["Body"].read()
+            )
+            for game in data.get("games", []):
+                if game.get("gameState") in ("OFF", "FINAL"):
+                    game_ids.add(game["id"])
+
+    context.log.info(f"Found {len(game_ids)} unique completed games")
+
+    fetched = 0
+    skipped = 0
+    for game_id in sorted(game_ids):
+        key = f"play-by-play/{game_id}/play-by-play.json"
+        if minio.exists(key):
+            skipped += 1
+            continue
+
+        url = f"https://api-web.nhle.com/v1/gamecenter/{game_id}/play-by-play"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        minio.upload(key, json.dumps(response.json()).encode())
+        fetched += 1
+        time.sleep(0.3)
+
+    context.log.info(f"Fetched {fetched} new games, skipped {skipped} already ingested")
+
 
 defs = Definitions(
-    assets=[standings, schedules],
+    assets=[standings, schedules, play_by_play],
     resources={
         "minio": MinIOResource(
             endpoint=os.getenv("MINIO_ENDPOINT", "http://localhost:9000"),
