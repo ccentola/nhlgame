@@ -1,10 +1,13 @@
-
-import os
-import boto3
 import json
+import os
 import time
+from datetime import date
+
+import boto3
 import requests
-from dagster import ConfigurableResource, Definitions, asset, AssetExecutionContext
+from dagster import AssetExecutionContext, Definitions, asset
+from dagster import ConfigurableResource
+
 
 class MinIOResource(ConfigurableResource):
     endpoint: str
@@ -22,11 +25,11 @@ class MinIOResource(ConfigurableResource):
 
     def upload(self, key: str, data: bytes):
         self.client().put_object(
-                    Bucket=self.bucket,
-                    Key=key,
-                    Body=data,
-                    ContentType="application/json",
-                )
+            Bucket=self.bucket,
+            Key=key,
+            Body=data,
+            ContentType="application/json",
+        )
 
     def exists(self, key: str) -> bool:
         try:
@@ -35,27 +38,90 @@ class MinIOResource(ConfigurableResource):
         except Exception:
             return False
 
+    def latest_key(self, prefix: str, suffix: str) -> str:
+        """Find the most recently created key matching prefix/.../suffix."""
+        paginator = self.client().get_paginator("list_objects_v2")
+        keys = []
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                if obj["Key"].endswith(suffix):
+                    keys.append(obj["Key"])
+        if not keys:
+            raise ValueError(f"No keys found under {prefix} ending with {suffix}")
+        return sorted(keys)[-1]  # lexicographic sort works since dates are ISO format
+
+
 @asset
 def standings(context: AssetExecutionContext, minio: MinIOResource):
-    """Fetch current NHL standings and store in data lake"""
-    url = "https://api-web.nhle.com/v1/standings/now"
-    response = requests.get(url)
-    response.raise_for_status()
-    data = response.json()
+    """Fetch current NHL standings and store dated snapshot in MinIO."""
+    today = date.today().isoformat()
 
-    key = "standings/standings.json"
-    minio.upload(key, json.dumps(data).encode())
-    context.log.info(f"Uploaded {key} with {len(data.get('standings', []))} teams")
+    key = f"standings/{today}/standings.json"
 
-    # Return list of team abbreviations for downstream assets
-    return [s["teamAbbrev"]["default"] for s in data["standings"]]
+    if minio.exists(key):
+        context.log.info(f"Standings snapshot for {today} already exists, skipping fetch")
+    else:
+        url = "https://api-web.nhle.com/v1/standings/now"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+        minio.upload(key, json.dumps(data).encode())
+        context.log.info(f"Uploaded standings snapshot for {today}")
+
+    # Always read from MinIO to return team abbreviations for downstream assets
+    data = json.loads(
+        minio.client()
+            .get_object(Bucket=minio.bucket, Key=key)["Body"]
+            .read()
+    )
+    team_abbrevs = [s["teamAbbrev"]["default"] for s in data["standings"]]
+    context.log.info(f"Found {len(team_abbrevs)} teams")
+    return team_abbrevs
+
+
+@asset(deps=[standings])
+def rosters(context: AssetExecutionContext, minio: MinIOResource):
+    """Fetch current roster for every NHL team and store dated snapshot in MinIO."""
+    today = date.today().isoformat()
+
+    standings_key = minio.latest_key("standings/", "standings.json")
+    standings_data = json.loads(
+        minio.client()
+            .get_object(Bucket=minio.bucket, Key=standings_key)["Body"]
+            .read()
+    )
+    team_abbrevs = [s["teamAbbrev"]["default"] for s in standings_data["standings"]]
+
+    uploaded = 0
+    skipped = 0
+    for abbrev in team_abbrevs:
+        key = f"rosters/{abbrev}/{today}/roster.json"
+
+        if minio.exists(key):
+            skipped += 1
+            continue
+
+        url = f"https://api-web.nhle.com/v1/roster/{abbrev}/current"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        minio.upload(key, json.dumps(response.json()).encode())
+        uploaded += 1
+        context.log.info(f"Uploaded roster snapshot for {abbrev} on {today}")
+        time.sleep(0.5)
+
+    context.log.info(f"Uploaded {uploaded} roster snapshots, skipped {skipped} already ingested for {today}")
+    return team_abbrevs
+
 
 @asset(deps=[standings])
 def schedules(context: AssetExecutionContext, minio: MinIOResource):
-    """Fetch full season schedule for every NHL team and store in data lake"""
+    """Fetch full season schedule for every NHL team and store in MinIO."""
+    standings_key = minio.latest_key("standings/", "standings.json")
     standings_data = json.loads(
         minio.client()
-            .get_object(Bucket=minio.bucket, Key="standings/standings.json")["Body"]
+            .get_object(Bucket=minio.bucket, Key=standings_key)["Body"]
             .read()
     )
     team_abbrevs = [s["teamAbbrev"]["default"] for s in standings_data["standings"]]
@@ -70,15 +136,15 @@ def schedules(context: AssetExecutionContext, minio: MinIOResource):
         minio.upload(key, json.dumps(response.json()).encode())
         uploaded += 1
         context.log.info(f"Uploaded schedule for {abbrev}")
-        time.sleep(0.5)  # 500ms between requests
+        time.sleep(0.5)
 
     context.log.info(f"Uploaded schedules for {uploaded} teams")
     return team_abbrevs
 
+
 @asset(deps=[schedules])
 def play_by_play(context: AssetExecutionContext, minio: MinIOResource):
     """Fetch play-by-play for all completed games across all teams."""
-    # Collect unique completed game IDs from all schedule files
     game_ids = set()
 
     s3 = minio.client()
@@ -116,7 +182,7 @@ def play_by_play(context: AssetExecutionContext, minio: MinIOResource):
 
 
 defs = Definitions(
-    assets=[standings, schedules, play_by_play],
+    assets=[standings, rosters, schedules, play_by_play],
     resources={
         "minio": MinIOResource(
             endpoint=os.getenv("MINIO_ENDPOINT", "http://localhost:9000"),
