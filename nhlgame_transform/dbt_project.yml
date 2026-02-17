@@ -1,0 +1,12 @@
+profile: nhlgame_transform
+
+config-version: 2
+version: "1.0.0"
+name: nhlgame_transform
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  minio_bucket: "nhl-raw"
