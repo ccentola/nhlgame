@@ -4,7 +4,58 @@ import duckdb
 db_path = os.getenv("DBT_DB_PATH", "nhlgame.duckdb")
 con = duckdb.connect(db_path)
 
-results = con.execute("""
+
+def print_results(title, query):
+    print(f"\n{'=' * 60}")
+    print(f"  {title}")
+    print("=" * 60)
+    results = con.execute(query).fetchall()
+    description = con.execute(query).description
+    headers = [d[0] for d in description]
+    col_widths = [max(len(str(h)), max((len(str(r[i])) for r in results), default=0)) for i, h in enumerate(headers)]
+    header_row = "  ".join(f"{h:<{col_widths[i]}}" for i, h in enumerate(headers))
+    print(header_row)
+    print("-" * len(header_row))
+    for row in results:
+        print("  ".join(f"{str(v):<{col_widths[i]}}" for i, v in enumerate(row)))
+    print(f"\n{len(results)} row(s)")
+
+
+print_results(
+    "stg_games: sample rows",
+    """
+    SELECT
+        game_id,
+        game_date,
+        away_team_abbrev,
+        away_score,
+        home_score,
+        home_team_abbrev,
+        last_period_type,
+        game_state
+    FROM main.stg_games
+    ORDER BY game_date DESC
+    LIMIT 10
+    """
+)
+
+print_results(
+    "stg_games: summary",
+    """
+    SELECT
+        count(*)                as total_games,
+        min(game_date)          as earliest_game,
+        max(game_date)          as latest_game,
+        count(*) filter (where last_period_type = 'REG')    as reg,
+        count(*) filter (where last_period_type = 'OT')     as ot,
+        count(*) filter (where last_period_type = 'SO')     as so
+    FROM main.stg_games
+    """
+)
+
+print_results(
+    "stg_plays: event type breakdown",
+    """
     SELECT
         event_type,
         count(*)                                    as total_events,
@@ -14,9 +65,5 @@ results = con.execute("""
     FROM main.stg_plays
     GROUP BY event_type
     ORDER BY total_events DESC
-""").fetchall()
-
-print(f"{'event_type':<20} {'total':>8} {'p1':>8} {'p2':>8} {'p3':>8}")
-print("-" * 56)
-for row in results:
-    print(f"{row[0]:<20} {row[1]:>8} {row[2]:>8} {row[3]:>8} {row[4]:>8}")
+    """
+)
