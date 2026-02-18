@@ -148,3 +148,38 @@ print_results(
     ORDER BY snapshot_date DESC
     """
 )
+
+print_results(
+    "fct_plays: event type breakdown",
+    """
+    SELECT
+        event_type,
+        count(*)                as total
+    FROM main.fct_plays
+    GROUP BY event_type
+    ORDER BY total DESC
+    """
+)
+
+print_results(
+    "fct_plays: sample goals",
+    """
+    SELECT
+        game_date,
+        home_team_abbrev,
+        away_team_abbrev,
+        period,
+        time_in_period,
+        scoring_player_name,
+        assist1_player_name,
+        assist2_player_name,
+        goalie_player_name,
+        shot_type,
+        home_score_at_goal,
+        away_score_at_goal
+    FROM main.fct_plays
+    WHERE event_type = 'goal'
+    ORDER BY game_date, game_id, sort_order
+    LIMIT 10
+    """
+)
