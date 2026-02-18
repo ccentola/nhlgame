@@ -7,8 +7,11 @@ requires-python = ">=3.11"
 dependencies = [
     "boto3>=1.42.49",
     "dagster>=1.12.14",
+    "dagster-dbt>=0.28.14",
     "dagster-postgres>=0.28.14",
     "dagster-webserver>=1.12.14",
+    "dbt-core>=1.11.5",
+    "dbt-duckdb>=1.10.1",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
 ]

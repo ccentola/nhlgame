@@ -1,0 +1,29 @@
+[0m15:00:38.016152 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b9a1710>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b9a1250>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ba4ad90>]}
+
+
+============================== 15:00:38.019591 | b9209629-b764-49b5-9c46-128f2de8aa1f ==============================
+[0m15:00:38.019591 [info ] [MainThread]: Running with dbt=1.11.5
+[0m15:00:38.019962 [debug] [MainThread]: running dbt with arguments {'quiet': 'False', 'warn_error': 'None', 'invocation_command': 'dbt init nhlgame_transform', 'debug': 'False', 'partial_parse': 'True', 'introspect': 'True', 'send_anonymous_usage_stats': 'True', 'write_json': 'True', 'log_cache_events': 'False', 'fail_fast': 'False', 'version_check': 'True', 'indirect_selection': 'eager', 'use_colors': 'True', 'empty': 'None', 'use_experimental_parser': 'False', 'target_path': 'None', 'printer_width': '80', 'profiles_dir': '/Users/ccentola/.dbt', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'cache_selected_only': 'False', 'log_format': 'default', 'log_path': 'logs', 'no_print': 'None', 'static_parser': 'True'}
+[0m15:00:38.029745 [debug] [MainThread]: Starter project path: /Users/ccentola/Documents/projects/nhlgame/.venv/lib/python3.11/site-packages/dbt/include/starter_project
+[0m15:00:38.033876 [info ] [MainThread]: 
+Your new dbt project "nhlgame_transform" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m15:00:38.034105 [info ] [MainThread]: Setting up your profile.
+[0m15:00:51.121631 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 13.156665, "process_in_blocks": "0", "process_kernel_time": 0.195004, "process_mem_max_rss": "128942080", "process_out_blocks": "0", "process_user_time": 0.810314}
+[0m15:00:51.122057 [debug] [MainThread]: Command `dbt init` succeeded at 15:00:51.121976 after 13.16 seconds
+[0m15:00:51.122298 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ba67990>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ba67c90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x102808890>]}
+[0m15:00:51.122536 [debug] [MainThread]: Flushing usage events
+[0m15:00:51.534988 [debug] [MainThread]: An error was encountered while trying to flush usage events

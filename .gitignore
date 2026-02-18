@@ -15,3 +15,4 @@ wheels/
 # local data
 data/
 *.db
+*.duckdb
