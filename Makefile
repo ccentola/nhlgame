@@ -27,7 +27,10 @@ dbt-test:
 	$(DBT) test --profiles-dir .
 
 dbt-docs:
-	$(DBT) docs generate --profiles-dir . && $(DBT) docs serve --profiles-dir .
+	cd nhlgame_transform && env $(ENV_VARS) sh -c 'uv run dbt docs generate --profiles-dir . && uv run dbt docs serve --profiles-dir .'
 
 dbt-query:
 	uv run python scripts/query.py
+
+dbt-test:
+	$(DBT) test --profiles-dir .
