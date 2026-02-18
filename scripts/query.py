@@ -67,3 +67,84 @@ print_results(
     ORDER BY total_events DESC
     """
 )
+
+print_results(
+    "stg_players_history: sample rows",
+    """
+    SELECT
+        player_id,
+        team_abbrev,
+        snapshot_date,
+        full_name,
+        position_code,
+        player_group,
+        sweater_number
+    FROM main.stg_players_history
+    ORDER BY snapshot_date DESC, team_abbrev, full_name
+    LIMIT 20
+    """
+)
+
+print_results(
+    "stg_players_history: snapshot summary",
+    """
+    SELECT
+        snapshot_date,
+        team_abbrev,
+        count(*) as player_count
+    FROM main.stg_players_history
+    GROUP BY snapshot_date, team_abbrev
+    ORDER BY snapshot_date DESC, team_abbrev
+    LIMIT 20
+    """
+)
+
+print_results(
+    "stg_players: latest snapshot sample",
+    """
+    SELECT
+        player_id,
+        team_abbrev,
+        full_name,
+        position_code,
+        sweater_number,
+        birth_country
+    FROM main.stg_players
+    ORDER BY team_abbrev, full_name
+    LIMIT 20
+    """
+)
+
+print_results(
+    "stg_standings: current standings",
+    """
+    SELECT
+        league_rank,
+        team_abbrev,
+        team_name,
+        conference_abbrev,
+        division_abbrev,
+        games_played,
+        wins,
+        losses,
+        ot_losses,
+        points,
+        round(point_pct, 3)     as point_pct,
+        goal_differential,
+        streak_code || streak_count::varchar as streak
+    FROM main.stg_standings
+    ORDER BY league_rank
+    """
+)
+
+print_results(
+    "stg_standings_history: snapshot count per date",
+    """
+    SELECT
+        snapshot_date,
+        count(*)                as teams
+    FROM main.stg_standings_history
+    GROUP BY snapshot_date
+    ORDER BY snapshot_date DESC
+    """
+)
