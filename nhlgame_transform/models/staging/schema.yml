@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  - name: stg_games
+    columns:
+      - name: game_id
+        tests:
+          - unique
+          - not_null
+      - name: game_date
+        tests:
+          - not_null
+      - name: game_state
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["OFF", "FINAL", "LIVE", "PRE", "CRIT"]
+
+  - name: stg_plays
+    columns:
+      - name: event_id
+        tests:
+          - not_null
+      - name: game_id
+        tests:
+          - not_null
+      - name: event_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - goal
+                  - shot-on-goal
+                  - missed-shot
+                  - blocked-shot
+                  - failed-shot-attempt
+                  - hit
+                  - faceoff
+                  - giveaway
+                  - takeaway
+                  - penalty
+                  - stoppage
+                  - period-start
+                  - period-end
+                  - game-end
+                  - delayed-penalty
+                  - shootout-complete
+
+  - name: stg_players
+    columns:
+      - name: player_id
+        tests:
+          - unique
+          - not_null
+      - name: team_abbrev
+        tests:
+          - not_null
+      - name: full_name
+        tests:
+          - not_null
+      - name: position_code
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["C", "L", "R", "D", "G"]
+
+  - name: stg_standings
+    columns:
+      - name: team_abbrev
+        tests:
+          - unique
+          - not_null
+      - name: points
+        tests:
+          - not_null
+      - name: games_played
+        tests:
+          - not_null

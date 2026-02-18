@@ -183,3 +183,17 @@ print_results(
     LIMIT 10
     """
 )
+
+print_results(
+    "unknown event types",
+    """
+    SELECT DISTINCT event_type
+    FROM main.stg_plays
+    WHERE event_type NOT IN (
+        'goal', 'shot-on-goal', 'missed-shot', 'blocked-shot',
+        'hit', 'faceoff', 'giveaway', 'takeaway', 'penalty',
+        'stoppage', 'period-start', 'period-end', 'game-end',
+        'delayed-penalty'
+    )
+    """
+)
